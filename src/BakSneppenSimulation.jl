@@ -1,8 +1,10 @@
 module BakSneppenSimulation
 
 export 
-    applymutations!, mutate, test, runsim, plotdata, 
+    applymutations!, mutate, test, runsim, plotsim, plotzero, simlinear,
     Simulation, SimCircular, SimLinear, SimConfig, SimState
+
+import Base: show
 
 ENV["GKS_ENCODING"]="utf8"
 using Random, Plots
@@ -16,19 +18,22 @@ end
 
 abstract type Simulation end
 
+show(io::IO, sim::Simulation) = print(io, "Simulation for p=$(sim.config.p) and $(sim.config.mutnum) mutations")
+
 struct SimConfig
+    n::Int
     p::Float64
     mutnum::Int
-    stop::BigInt
+    stop::Int
     pointnum::Int
     step::Int
     shift::Int
 end
 
-function SimConfig(p::Float64, mutnum::Int, stop::Int=10^6, pointnum::Int=10^3)
+function SimConfig(n::Int, p::Float64, mutnum::Int, stop::Int=10^6, pointnum::Int=10^3)
     step = max(1, floor(stop/pointnum))
     shift = convert(Int, ceil(mutnum/2))
-    SimConfig(p, mutnum, stop, pointnum, step, shift)
+    SimConfig(n, p, mutnum, stop, pointnum, step, shift)
 end
 
 struct SimState
@@ -47,7 +52,7 @@ struct SimCircular <: Simulation
 end
 
 function SimCircular(config::SimConfig)
-    xlist = zeros(Int, n)
+    xlist = zeros(Int, config.n)
     state = SimState(xlist)
     SimCircular(config, state)
 end
@@ -59,7 +64,7 @@ struct SimLinear <: Simulation
 end
 
 function SimLinear(config::SimConfig, bounded=false)
-    xlist = ones(Int, n)
+    xlist = ones(Int, config.n)
     xlist[1] = 0
     state = SimState(xlist)
     SimLinear(config, state, bounded)
@@ -119,12 +124,12 @@ end
 function runsim(sim::Simulation)
     data = Array{DataPoint, 1}()
     death = 0
-    for t in 1:sim.stop
+    for t in 1:sim.config.stop
         mutate(sim)
         if zeros(sim) == 0
             death+=1
         end
-        if (t-1) % sim.step == 0
+        if (t-1) % sim.config.step == 0
             z = zeros(sim)
             d = 0
             if z != 0
@@ -136,7 +141,11 @@ function runsim(sim::Simulation)
     data
 end
 
-#runsim(n, p) = runsim(n, p, 2*n)
+function simlinear(config::SimConfig, bounded=false)
+    sim = SimLinear(config, bounded)
+    data = runsim(sim)
+    (data, sim)
+end
 
 function mutate(sim::Simulation)
     x0len = zeros(sim)
@@ -164,7 +173,7 @@ function applymut!(sim::SimLinear, mutations::Vector{Int}, ind::Int)
         elseif  mutationind == n(sim)+1
             # extend the array
             if !sim.bounded
-            push!(sim.xlist, 1)
+            push!(sim.state.xlist, 1)
             else
                 continue
             end
@@ -198,13 +207,23 @@ function update!(state::SimState, new, mutationind)
     end
 end
 
-function plotdata(data::Array{DataPoint, 1}, sim::Simulation)
+function plotsim(data::Array{DataPoint, 1}, sim)
     gr()
     tl = map(p->p.time, data)
     zl = map(p->p.zeros, data)
     dl = map(p->p.diameter, data)
-    p = plot(tl, zl, ylims=(-1,1 + n(sim)), label="zeros")
-    plot!(tl, dl, label="diameter")
+    ylim = max(findmax(dl)[1], sim.config.n)
+    p = plot(tl, zl, ylims=(-1, ylim), label="zeros")
+    plot!(tl, dl, label="diameter", title=string(sim))
 end
+plotsim((data, sim)) = plotsim(data, sim)
+
+function plotzero(data, sim)
+    gr()
+    tl = map(p->p.time, data)
+    pl = map(p->p.zeros/p.diameter, data)
+    p = plot(tl, pl, ylims=(0, 1), label="percentage of zeros", title=string(sim))
+end
+plotzero((data, sim)) = plotzero(data, sim)
 
 end # module

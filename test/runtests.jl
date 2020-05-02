@@ -8,7 +8,7 @@ using Random
     @testset "3 mutations" begin
         Random.seed!(1234)
 
-        config = SimConfig(0.6, 3)
+        config = SimConfig(10, 0.6, 3)
         state = SimState(rand(0:1, 10))
         sim = SimCircular(config, state)
 
@@ -37,7 +37,7 @@ using Random
     @testset "2 mutations" begin
         Random.seed!(1234)
 
-        config = SimConfig(0.6, 2)
+        config = SimConfig(10, 0.6, 2)
         state = SimState(rand(0:1, 10))
         sim = SimLinear(config, state, true)
 
