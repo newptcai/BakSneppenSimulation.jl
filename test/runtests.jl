@@ -1,49 +1,65 @@
 using BakSneppenSimulation
-using BakSneppenSimulation: n, width, diameter
+using BakSneppenSimulation: n, diameter
 using Test
 using Random
 
 @testset "BakSneppenSimulation.jl" begin
-    p0 = 0.6
-
-    Random.seed!(1234)
-    xlist = rand(0:1, 10)
-    sim = Simulation(xlist, p0, 3, 10^6)
 
     @testset "3 mutations" begin
-        drawball(sim)
+        Random.seed!(1234)
 
-        @test sim.xlist == [0, 1, 1, 1, 0, 0, 0, 0, 1, 1]
-        @test sim.x0list == findall(x->x==0, xlist)
+        config = SimConfig(0.6, 3)
+        state = SimState(rand(0:1, 10))
+        sim = SimCircular(config, state)
 
-        @test diameter(sim.x0list, n(sim)) == 7
-        @test width(sim.xlist) == 8
+        @test state.xlist == [0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
+        @test state.x0list == [1, 5, 6, 7, 9]
 
-        drawball(sim)
+        mutate(sim)
 
-        @test sim.xlist == [0, 1, 1, 1, 0, 0, 1, 1, 1, 1]
-        @test sim.x0list == findall(x->x==0, xlist)
+        @test state.xlist == [0, 1, 1, 1, 1, 0, 0, 1, 0, 1]
+        @test state.x0list == findall(x->x==0, state.xlist)
+        @test diameter(sim) == 6
 
-        @test diameter(sim.x0list, n(sim)) == 6
-        @test width(sim.xlist) == 6
+        mutate(sim)
 
-        sim = Simulation(xlist, p0, 2, 10^6)
+        @test state.xlist == [0, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+        @test state.x0list == findall(x->x==0, state.xlist)
+        @test diameter(sim) == 5
+
+        mutate(sim)
+
+        @test state.xlist == [0, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+        @test sort!(state.x0list) == findall(x->x==0, state.xlist)
+        @test diameter(sim) == 5
     end
 
     @testset "2 mutations" begin
-        xlist = rand(0:1, 10)
-        sim = Simulation(xlist, p0, 2, 10^6)
+        Random.seed!(1234)
 
-        drawball(sim)
-        @test sim.xlist == [0, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+        config = SimConfig(0.6, 2)
+        state = SimState(rand(0:1, 10))
+        sim = SimLinear(config, state, true)
 
-        drawball(sim)
-        @test sim.xlist == [0, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+        @test state.xlist == [0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
+        @test state.x0list == [1, 5, 6, 7, 9]
 
-        drawball(sim)
-        @test sim.xlist == [1, 0, 1, 1, 1, 1, 0, 1, 0, 1]
+        mutate(sim)
 
-        drawball(sim)
-        @test sim.xlist == [1, 0, 1, 1, 1, 1, 0, 0, 0, 1]
+        @test state.xlist == [0, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+        @test state.x0list == findall(x->x==0, state.xlist)
+        @test diameter(sim) == 9
+
+        mutate(sim)
+
+        @test state.xlist == [0, 1, 1, 1, 1, 1, 0, 1, 0, 1]
+        @test state.x0list == findall(x->x==0, state.xlist)
+        @test diameter(sim) == 9
+
+        mutate(sim)
+
+        @test state.xlist == [1, 0, 1, 1, 1, 1, 0, 1, 0, 1]
+        @test sort!(state.x0list) == findall(x->x==0, state.xlist)
+        @test diameter(sim) == 8
     end
 end
